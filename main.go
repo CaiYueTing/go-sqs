@@ -1,12 +1,36 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
+
+// Env is the environment variable
+type Env struct {
+	Queueurl string `json:"queueurl"`
+}
+
+var env Env
+
+func init() {
+	readenv, err := os.Open("config.json")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	envjson, _ := ioutil.ReadAll(readenv)
+	err = json.Unmarshal(envjson, &env)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
 
 func main() {
 	sess, err := session.NewSession(&aws.Config{
@@ -18,9 +42,9 @@ func main() {
 	}
 
 	svc := sqs.New(sess)
-	queueURL := "https://sqs.us-west-2.amazonaws.com/233704588990/barry-test-sqs.fifo"
+	queueURL := env.Queueurl
 
-	// M2Q(svc, queueURL)
+	M2Q(svc, queueURL)
 	Q2M(svc, queueURL)
 
 }
