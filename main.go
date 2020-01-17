@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"gosqs/sqshelper"
 	"io/ioutil"
 	"os"
 
@@ -17,32 +18,37 @@ type Env struct {
 	Queueurl string `json:"queueurl"`
 }
 
-// Message from the message.json
-type Message struct {
-	Title   string `json:"title"`
-	Action  string `json:"action"`
-	Message string `json:"message"`
-}
-
 var env Env
-var messages []Message
+var messages []sqshelper.Msg
 
 func init() {
 	readenv, err := os.Open("config.json")
-	checkerr(err)
+	if err != nil {
+		checkerr(err)
+		return
+	}
 	defer readenv.Close()
 
 	envjson, _ := ioutil.ReadAll(readenv)
 	err = json.Unmarshal(envjson, &env)
-	checkerr(err)
+	if err != nil {
+		checkerr(err)
+		return
+	}
 
 	readM, err := os.Open("message.json")
-	checkerr(err)
+	if err != nil {
+		checkerr(err)
+		return
+	}
 	defer readM.Close()
 
 	messagejson, _ := ioutil.ReadAll(readM)
 	err = json.Unmarshal(messagejson, &messages)
-	checkerr(err)
+	if err != nil {
+		checkerr(err)
+		return
+	}
 }
 
 func main() {
@@ -51,95 +57,34 @@ func main() {
 		Credentials: credentials.NewSharedCredentials("", "default"),
 	})
 	if err != nil {
-		fmt.Println(err)
+		checkerr(err)
 	}
 
-	svc := sqs.New(sess)
-	queueURL := env.Queueurl
+	// for _, message := range messages {
+	// 	if message.Title == "" {
+	// 		continue
+	// 	}
+	// 	input := sqshelper.NewSendMessage(message, env.Queueurl)
+	// 	err := sqshelper.Send(sess, input)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// }
 
-	M2Q(svc, queueURL)
-	Q2M(svc, queueURL)
-
+	rec := sqshelper.NewReceiveMessage(env.Queueurl)
+	msgs, err := sqshelper.Receive(sess, rec)
+	for _, msg := range msgs {
+		m := toStruct(msg.MessageAttributes)
+		fmt.Println(m.Title, m.Message, m.Action)
+	}
 }
 
-func newMessage() {
-
-}
-
-// M2Q is a method that message to aws SQS
-func M2Q(svc *sqs.SQS, url string) error {
-
-	sendMessage := &sqs.SendMessageInput{
-		DelaySeconds:           aws.Int64(0),
-		MessageGroupId:         aws.String("the_first_group"),
-		MessageDeduplicationId: aws.String("the_first_group"),
-		MessageAttributes: map[string]*sqs.MessageAttributeValue{
-			"Title": &sqs.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String("The Whistler"),
-			},
-			"Author": &sqs.MessageAttributeValue{
-				DataType:    aws.String("String"),
-				StringValue: aws.String("John Grisham"),
-			},
-			"WeeksOn": &sqs.MessageAttributeValue{
-				DataType:    aws.String("Number"),
-				StringValue: aws.String("6"),
-			},
-		},
-		MessageBody: aws.String("message body"),
-		QueueUrl:    aws.String(url),
-	}
-
-	result, err := svc.SendMessage(sendMessage)
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Message send Succeeded", *result)
-	return nil
-}
-
-// Q2M is a method that receive message from aws SQS
-func Q2M(svc *sqs.SQS, url string) error {
-
-	receiveMessage := &sqs.ReceiveMessageInput{
-		AttributeNames: []*string{
-			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
-		},
-		MessageAttributeNames: []*string{
-			aws.String(sqs.QueueAttributeNameAll),
-		},
-		QueueUrl:            aws.String(url),
-		MaxNumberOfMessages: aws.Int64(5),
-		VisibilityTimeout:   aws.Int64(20),
-		WaitTimeSeconds:     aws.Int64(0),
-	}
-
-	result, err := svc.ReceiveMessage(receiveMessage)
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Message receive amount: ", len(result.Messages))
-
-	for index, message := range result.Messages {
-		fmt.Println(message)
-		deleteMessage := &sqs.DeleteMessageInput{
-			QueueUrl:      aws.String(url),
-			ReceiptHandle: message.ReceiptHandle,
-		}
-		result, err := svc.DeleteMessage(deleteMessage)
-		if err != nil {
-			fmt.Println(err, "Delete message error")
-		} else {
-			fmt.Println("Delete message success", index)
-			fmt.Println(result.String())
-		}
-	}
-	return nil
+func toStruct(m map[string]*sqs.MessageAttributeValue) sqshelper.Msg {
+	msg := sqshelper.Msg{}
+	msg.Title = *m["title"].StringValue
+	msg.Action = *m["action"].StringValue
+	msg.Message = *m["message"].StringValue
+	return msg
 }
 
 func checkerr(err error) {
