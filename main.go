@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"gosqs/sqshelper"
+	Queue "gosqs/sqshelper"
 	"gosqs/utility"
 	"strconv"
 
@@ -26,27 +26,27 @@ func main() {
 		if message.Title == "" {
 			continue
 		}
-		input := sqshelper.NewSendMessage(message, url, strconv.Itoa(i))
-		err := sqshelper.Send(sess, input)
+		input := Queue.NewSendMessage(message, url, strconv.Itoa(i))
+		err := Queue.Send(sess, input)
 		if err != nil {
 			fmt.Println(err, i)
 		}
 	}
 
-	rec := sqshelper.NewReceiveMessage(url)
-	msgs, err := sqshelper.Receive(sess, rec)
+	rec := Queue.NewReceiveMessage(url)
+	msgs, err := Queue.Receive(sess, rec)
 
 	recipes := []string{}
 
 	for _, msg := range msgs {
-		m := sqshelper.ToStruct(msg.MessageAttributes)
+		m := Queue.ToStruct(msg.MessageAttributes)
 		fmt.Println(m.Title, m.Message, m.Action)
 		recipes = append(recipes, *msg.ReceiptHandle)
 	}
 
 	for _, recipe := range recipes {
-		deleteMsg := sqshelper.NewDeleteMessage(&recipe, url)
-		err := sqshelper.Delete(sess, deleteMsg)
+		deleteMsg := Queue.NewDeleteMessage(&recipe, url)
+		err := Queue.Delete(sess, deleteMsg)
 		if err != nil {
 			fmt.Println(err)
 		}
