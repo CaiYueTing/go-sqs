@@ -1,0 +1,17 @@
+[
+    {
+        "title": "reboot title",
+        "action": "reboot",
+        "message": "reboot machine"
+    },
+    {
+        "title": "upgrade title",
+        "action": "upgrade",
+        "message": "upgrade machine"
+    },
+    {
+        "title": "shadow title",
+        "action": "shadow",
+        "message": "shadow machine"
+    }
+]

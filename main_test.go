@@ -18,6 +18,7 @@ func init() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	defer readenv.Close()
 
 	envjson, _ := ioutil.ReadAll(readenv)
 	err = json.Unmarshal(envjson, &env)

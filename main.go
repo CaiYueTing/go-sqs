@@ -17,19 +17,32 @@ type Env struct {
 	Queueurl string `json:"queueurl"`
 }
 
+// Message from the message.json
+type Message struct {
+	Title   string `json:"title"`
+	Action  string `json:"action"`
+	Message string `json:"message"`
+}
+
 var env Env
+var messages []Message
 
 func init() {
 	readenv, err := os.Open("config.json")
-	if err != nil {
-		fmt.Println(err)
-	}
+	checkerr(err)
+	defer readenv.Close()
 
 	envjson, _ := ioutil.ReadAll(readenv)
 	err = json.Unmarshal(envjson, &env)
-	if err != nil {
-		fmt.Println(err)
-	}
+	checkerr(err)
+
+	readM, err := os.Open("message.json")
+	checkerr(err)
+	defer readM.Close()
+
+	messagejson, _ := ioutil.ReadAll(readM)
+	err = json.Unmarshal(messagejson, &messages)
+	checkerr(err)
 }
 
 func main() {
@@ -46,6 +59,10 @@ func main() {
 
 	M2Q(svc, queueURL)
 	Q2M(svc, queueURL)
+
+}
+
+func newMessage() {
 
 }
 
@@ -123,4 +140,11 @@ func Q2M(svc *sqs.SQS, url string) error {
 		}
 	}
 	return nil
+}
+
+func checkerr(err error) {
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
