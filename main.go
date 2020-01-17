@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gosqs/sqshelper"
 	"gosqs/utility"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -19,21 +20,28 @@ func main() {
 		fmt.Println(err)
 	}
 
-	// for _, message := range utility.Messages {
-	// 	if message.Title == "" {
-	// 		continue
-	// 	}
-	// 	input := sqshelper.NewSendMessage(message, utility.Envir.Queueurl)
-	// 	err := sqshelper.Send(sess, input)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 	}
-	// }
+	url := utility.Envir.Queueurl
 
-	rec := sqshelper.NewReceiveMessage(utility.Envir.Queueurl)
+	for i, message := range utility.Messages {
+		if message.Title == "" {
+			continue
+		}
+		input := sqshelper.NewSendMessage(message, url, strconv.Itoa(i))
+		err := sqshelper.Send(sess, input)
+		if err != nil {
+			fmt.Println(err, i)
+		}
+	}
+
+	rec := sqshelper.NewReceiveMessage(url)
 	msgs, err := sqshelper.Receive(sess, rec)
 	for _, msg := range msgs {
 		m := sqshelper.ToStruct(msg.MessageAttributes)
 		fmt.Println(m.Title, m.Message, m.Action)
+		// deleteMsg := sqshelper.NewDeleteMessage(msg.ReceiptHandle, url)
+		// err := sqshelper.Delete(sess, deleteMsg)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// }
 	}
 }

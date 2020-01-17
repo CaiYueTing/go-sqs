@@ -23,11 +23,11 @@ func ToStruct(m map[string]*sqs.MessageAttributeValue) Msg {
 	return msg
 }
 
-func NewSendMessage(m Msg, url string) *sqs.SendMessageInput {
+func NewSendMessage(m Msg, url string, gid string) *sqs.SendMessageInput {
 	message := &sqs.SendMessageInput{
 		DelaySeconds:           aws.Int64(0),
-		MessageGroupId:         aws.String("the_group_id"),
-		MessageDeduplicationId: aws.String("the_first_group"),
+		MessageGroupId:         aws.String(gid),
+		MessageDeduplicationId: aws.String(gid),
 		MessageAttributes: map[string]*sqs.MessageAttributeValue{
 			"title":   &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: &m.Title},
 			"action":  &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: &m.Action},
@@ -55,6 +55,14 @@ func NewReceiveMessage(url string) *sqs.ReceiveMessageInput {
 	return message
 }
 
+func NewDeleteMessage(ReceiptHandle *string, url string) *sqs.DeleteMessageInput {
+	message := &sqs.DeleteMessageInput{
+		QueueUrl:      &url,
+		ReceiptHandle: ReceiptHandle,
+	}
+	return message
+}
+
 func Send(sess *session.Session, input *sqs.SendMessageInput) error {
 	svc := sqs.New(sess)
 	result, err := svc.SendMessage(input)
@@ -73,4 +81,14 @@ func Receive(sess *session.Session, input *sqs.ReceiveMessageInput) ([]*sqs.Mess
 	}
 	fmt.Println("Message receive amount: ", len(result.Messages))
 	return result.Messages, nil
+}
+
+func Delete(sess *session.Session, input *sqs.DeleteMessageInput) error {
+	svc := sqs.New(sess)
+	_, err := svc.DeleteMessage(input)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Message delete")
+	return nil
 }
