@@ -26,7 +26,7 @@ func ToStruct(m map[string]*sqs.MessageAttributeValue) Msg {
 func NewSendMessage(m Msg, url string, gid string) *sqs.SendMessageInput {
 	message := &sqs.SendMessageInput{
 		DelaySeconds:           aws.Int64(0),
-		MessageGroupId:         aws.String(gid),
+		MessageGroupId:         aws.String("GroupId"),
 		MessageDeduplicationId: aws.String(gid),
 		MessageAttributes: map[string]*sqs.MessageAttributeValue{
 			"title":   &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: &m.Title},

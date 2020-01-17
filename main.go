@@ -35,13 +35,20 @@ func main() {
 
 	rec := sqshelper.NewReceiveMessage(url)
 	msgs, err := sqshelper.Receive(sess, rec)
+
+	recipes := []string{}
+
 	for _, msg := range msgs {
 		m := sqshelper.ToStruct(msg.MessageAttributes)
 		fmt.Println(m.Title, m.Message, m.Action)
-		// deleteMsg := sqshelper.NewDeleteMessage(msg.ReceiptHandle, url)
-		// err := sqshelper.Delete(sess, deleteMsg)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// }
+		recipes = append(recipes, *msg.ReceiptHandle)
+	}
+
+	for _, recipe := range recipes {
+		deleteMsg := sqshelper.NewDeleteMessage(&recipe, url)
+		err := sqshelper.Delete(sess, deleteMsg)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
