@@ -15,6 +15,14 @@ type Msg struct {
 	Message string `json:"message"`
 }
 
+func ToStruct(m map[string]*sqs.MessageAttributeValue) Msg {
+	msg := Msg{}
+	msg.Title = *m["title"].StringValue
+	msg.Action = *m["action"].StringValue
+	msg.Message = *m["message"].StringValue
+	return msg
+}
+
 func NewSendMessage(m Msg, url string) *sqs.SendMessageInput {
 	message := &sqs.SendMessageInput{
 		DelaySeconds:           aws.Int64(0),
