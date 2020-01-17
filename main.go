@@ -50,7 +50,7 @@ func main() {
 }
 
 // M2Q is a method that message to aws SQS
-func M2Q(svc *sqs.SQS, url string) {
+func M2Q(svc *sqs.SQS, url string) error {
 
 	sendMessage := &sqs.SendMessageInput{
 		DelaySeconds:           aws.Int64(0),
@@ -77,14 +77,15 @@ func M2Q(svc *sqs.SQS, url string) {
 	result, err := svc.SendMessage(sendMessage)
 
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
 	fmt.Println("Message send Succeeded", *result)
+	return nil
 }
 
 // Q2M is a method that receive message from aws SQS
-func Q2M(svc *sqs.SQS, url string) {
+func Q2M(svc *sqs.SQS, url string) error {
 
 	receiveMessage := &sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
@@ -102,7 +103,7 @@ func Q2M(svc *sqs.SQS, url string) {
 	result, err := svc.ReceiveMessage(receiveMessage)
 
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
 	fmt.Println("Message receive amount: ", len(result.Messages))
@@ -121,5 +122,5 @@ func Q2M(svc *sqs.SQS, url string) {
 			fmt.Println(result.String())
 		}
 	}
-
+	return nil
 }
