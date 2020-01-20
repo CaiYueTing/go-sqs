@@ -4,11 +4,13 @@ import (
 	"fmt"
 	Queue "gosqs/sqshelper"
 	"gosqs/utility"
+	"log"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
 func main() {
@@ -17,36 +19,28 @@ func main() {
 		Credentials: credentials.NewSharedCredentials("", "default"),
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Panic(err)
 	}
 
+	svc := sqs.New(sess)
 	url := utility.Envir.Queueurl
+	envMessages := utility.Messages
 
-	for i, message := range utility.Messages {
-		if message.Title == "" {
+	for i, msg := range envMessages {
+		if msg.Title == "" {
 			continue
 		}
-		input := Queue.NewSendMessage(message, url, strconv.Itoa(i))
-		err := Queue.Send(sess, input)
+		err = msg.Send2Q(svc, url, strconv.Itoa(i))
 		if err != nil {
-			fmt.Println(err, i)
+			fmt.Println(err)
 		}
 	}
 
-	rec := Queue.NewReceiveMessage(url)
-	msgs, err := Queue.Receive(sess, rec)
-
-	recipes := []string{}
+	msgs := Queue.Receive(svc, url)
 
 	for _, msg := range msgs {
-		m := Queue.ToStruct(msg.MessageAttributes)
-		fmt.Println(m.Title, m.Message, m.Action)
-		recipes = append(recipes, *msg.ReceiptHandle)
-	}
-
-	for _, recipe := range recipes {
-		deleteMsg := Queue.NewDeleteMessage(&recipe, url)
-		err := Queue.Delete(sess, deleteMsg)
+		fmt.Println("msg body", msg)
+		err = msg.Delete(svc, url)
 		if err != nil {
 			fmt.Println(err)
 		}

@@ -1,46 +1,40 @@
 package sqshelper
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
 // Message from the message.json
 type Msg struct {
-	Title   string `json:"title"`
-	Action  string `json:"action"`
-	Message string `json:"message"`
+	Title         string `json:"title"`
+	Action        string `json:"action"`
+	Message       string `json:"message"`
+	ReceiptHandle *string
 }
 
-func ToStruct(m map[string]*sqs.MessageAttributeValue) Msg {
-	msg := Msg{}
-	msg.Title = *m["title"].StringValue
-	msg.Action = *m["action"].StringValue
-	msg.Message = *m["message"].StringValue
-	return msg
-}
+func (msg *Msg) newSendMessage(url string, gid string) *sqs.SendMessageInput {
+	body, err := json.Marshal(msg)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer recoverfunc(err, "new send message")
 
-func NewSendMessage(m Msg, url string, gid string) *sqs.SendMessageInput {
-	message := &sqs.SendMessageInput{
+	return &sqs.SendMessageInput{
 		DelaySeconds:           aws.Int64(0),
 		MessageGroupId:         aws.String("GroupId"),
-		MessageDeduplicationId: aws.String(gid),
-		MessageAttributes: map[string]*sqs.MessageAttributeValue{
-			"title":   &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: &m.Title},
-			"action":  &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: &m.Action},
-			"message": &sqs.MessageAttributeValue{DataType: aws.String("String"), StringValue: &m.Message},
-		},
-		MessageBody: aws.String("message body"),
-		QueueUrl:    &url,
+		MessageDeduplicationId: &gid,
+		MessageBody:            aws.String(string(body)), // Unmarshal
+		QueueUrl:               &url,
 	}
-	return message
 }
 
-func NewReceiveMessage(url string) *sqs.ReceiveMessageInput {
-	message := &sqs.ReceiveMessageInput{
+func newReceiveMessage(url string) *sqs.ReceiveMessageInput {
+	return &sqs.ReceiveMessageInput{
 		QueueUrl:            &url,
 		MaxNumberOfMessages: aws.Int64(5),
 		VisibilityTimeout:   aws.Int64(20),
@@ -52,20 +46,18 @@ func NewReceiveMessage(url string) *sqs.ReceiveMessageInput {
 			aws.String(sqs.QueueAttributeNameAll),
 		},
 	}
-	return message
 }
 
-func NewDeleteMessage(ReceiptHandle *string, url string) *sqs.DeleteMessageInput {
-	message := &sqs.DeleteMessageInput{
+func (msg *Msg) newDeleteMessage(url string) *sqs.DeleteMessageInput {
+	return &sqs.DeleteMessageInput{
 		QueueUrl:      &url,
-		ReceiptHandle: ReceiptHandle,
+		ReceiptHandle: msg.ReceiptHandle,
 	}
-	return message
 }
 
-func Send(sess *session.Session, input *sqs.SendMessageInput) error {
-	svc := sqs.New(sess)
-	result, err := svc.SendMessage(input)
+func (msg *Msg) Send2Q(svc *sqs.SQS, url string, gid string) error {
+	// gid is duplicate group id
+	result, err := svc.SendMessage(msg.newSendMessage(url, gid))
 	if err != nil {
 		return err
 	}
@@ -73,22 +65,38 @@ func Send(sess *session.Session, input *sqs.SendMessageInput) error {
 	return nil
 }
 
-func Receive(sess *session.Session, input *sqs.ReceiveMessageInput) ([]*sqs.Message, error) {
-	svc := sqs.New(sess)
-	result, err := svc.ReceiveMessage(input)
+func Receive(svc *sqs.SQS, url string) []Msg {
+	result, err := svc.ReceiveMessage(newReceiveMessage(url))
 	if err != nil {
-		return nil, err
+		log.Panic(err)
 	}
 	fmt.Println("Message receive amount: ", len(result.Messages))
-	return result.Messages, nil
+	defer recoverfunc(err, "receive message")
+	return msg2Struct(result.Messages)
 }
 
-func Delete(sess *session.Session, input *sqs.DeleteMessageInput) error {
-	svc := sqs.New(sess)
-	_, err := svc.DeleteMessage(input)
+func msg2Struct(msgs []*sqs.Message) []Msg {
+	messages := []Msg{}
+	for _, msg := range msgs {
+		var m Msg
+		json.Unmarshal([]byte(*msg.Body), &m)
+		m.ReceiptHandle = msg.ReceiptHandle
+		messages = append(messages, m)
+	}
+	return messages
+}
+
+func (msg *Msg) Delete(svc *sqs.SQS, url string) error {
+	_, err := svc.DeleteMessage(msg.newDeleteMessage(url))
 	if err != nil {
 		return err
 	}
 	fmt.Println("Message delete")
 	return nil
+}
+
+func recoverfunc(err error, method string) {
+	if err := recover(); err != nil {
+		fmt.Println("recover"+method, err)
+	}
 }

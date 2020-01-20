@@ -2,9 +2,9 @@ package utility
 
 import (
 	"encoding/json"
-	"fmt"
 	"gosqs/sqshelper"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -22,39 +22,26 @@ func init() {
 
 func readEnv() {
 	readenv, err := os.Open("config.json")
-	if err != nil {
-		checkerr(err)
-		return
-	}
+	checkerr(err)
 	defer readenv.Close()
 
 	envjson, _ := ioutil.ReadAll(readenv)
 	err = json.Unmarshal(envjson, &Envir)
-	if err != nil {
-		checkerr(err)
-		return
-	}
+	checkerr(err)
 }
 
 func readMessage() {
 	readMessage, err := os.Open("message.json")
-	if err != nil {
-		checkerr(err)
-		return
-	}
+	checkerr(err)
 	defer readMessage.Close()
 
 	messagejson, _ := ioutil.ReadAll(readMessage)
 	err = json.Unmarshal(messagejson, &Messages)
-	if err != nil {
-		checkerr(err)
-		return
-	}
+	checkerr(err)
 }
 
 func checkerr(err error) {
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Panic(err)
 	}
 }
