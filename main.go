@@ -5,7 +5,6 @@ import (
 	Queue "gosqs/sqshelper"
 	"gosqs/utility"
 	"log"
-	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -26,11 +25,11 @@ func main() {
 	url := utility.Envir.Queueurl
 	envMessages := utility.Messages
 
-	for i, msg := range envMessages {
-		if msg.Title == "" {
+	for _, msg := range envMessages {
+		if msg.Title == "" || msg.Action == "" || msg.Message == "" {
 			continue
 		}
-		err = msg.Send2Q(svc, url, strconv.Itoa(i))
+		err = msg.Send2Q(svc, url)
 		if err != nil {
 			fmt.Println(err)
 		}

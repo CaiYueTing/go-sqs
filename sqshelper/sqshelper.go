@@ -7,9 +7,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	uuid "github.com/satori/go.uuid"
 )
 
-// Message from the message.json
+// Msg from the message.json
 type Msg struct {
 	Title         string `json:"title"`
 	Action        string `json:"action"`
@@ -17,17 +18,16 @@ type Msg struct {
 	ReceiptHandle *string
 }
 
-func (msg *Msg) newSendMessage(url string, gid string) *sqs.SendMessageInput {
+func (msg *Msg) newSendMessage(url string) *sqs.SendMessageInput {
 	body, err := json.Marshal(msg)
 	if err != nil {
 		log.Panic(err)
 	}
 	defer recoverfunc(err, "new send message")
-
 	return &sqs.SendMessageInput{
 		DelaySeconds:           aws.Int64(0),
 		MessageGroupId:         aws.String("GroupId"),
-		MessageDeduplicationId: &gid,
+		MessageDeduplicationId: aws.String(uuid.NewV4().String()),
 		MessageBody:            aws.String(string(body)), // Unmarshal
 		QueueUrl:               &url,
 	}
@@ -55,23 +55,28 @@ func (msg *Msg) newDeleteMessage(url string) *sqs.DeleteMessageInput {
 	}
 }
 
-func (msg *Msg) Send2Q(svc *sqs.SQS, url string, gid string) error {
+func (msg *Msg) Send2Q(svc *sqs.SQS, url string) error {
 	// gid is duplicate group id
-	result, err := svc.SendMessage(msg.newSendMessage(url, gid))
+	result, err := svc.SendMessage(msg.newSendMessage(url))
+
 	if err != nil {
-		return err
+		log.Panic(err)
 	}
+	defer recoverfunc(err, "send message to queue")
+
 	fmt.Println("send message success", result.MessageId)
 	return nil
 }
 
 func Receive(svc *sqs.SQS, url string) []Msg {
 	result, err := svc.ReceiveMessage(newReceiveMessage(url))
+
 	if err != nil {
 		log.Panic(err)
 	}
-	fmt.Println("Message receive amount: ", len(result.Messages))
 	defer recoverfunc(err, "receive message")
+
+	fmt.Println("Message receive amount: ", len(result.Messages))
 	return msg2Struct(result.Messages)
 }
 
