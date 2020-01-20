@@ -93,9 +93,12 @@ func msg2Struct(msgs []*sqs.Message) []Msg {
 
 func (msg *Msg) Delete(svc *sqs.SQS, url string) error {
 	_, err := svc.DeleteMessage(msg.newDeleteMessage(url))
+
 	if err != nil {
-		return err
+		log.Panic(err)
 	}
+	defer recoverfunc(err, "delete message")
+
 	fmt.Println("Message delete")
 	return nil
 }
