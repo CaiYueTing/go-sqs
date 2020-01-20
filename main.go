@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"gosqs/action"
 	Queue "gosqs/sqshelper"
 	"gosqs/utility"
 	"log"
@@ -39,6 +40,9 @@ func main() {
 
 	for _, msg := range msgs {
 		fmt.Println("msg body", msg)
+		missionfactory := new(action.ActionFactory)
+		mission := missionfactory.GenerateMission(msg.Action)
+		mission.DoMission()
 		err = msg.Delete(svc, url)
 		if err != nil {
 			fmt.Println(err)
