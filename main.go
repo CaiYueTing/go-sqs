@@ -30,22 +30,20 @@ func main() {
 		if msg.Title == "" || msg.Action == "" || msg.Message == "" {
 			continue
 		}
-		err = msg.Send2Q(svc, url)
+		qmsg := Queue.NewQMsg(msg, url)
+		err = qmsg.Send2Q(svc)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 
-	msgs := Queue.Receive(svc, url)
+	qmsgs := Queue.Receive(svc, url)
 
-	for _, msg := range msgs {
-		fmt.Println("msg body", msg)
-		missionfactory := new(action.ActionFactory)
-		mission := missionfactory.GenerateMission(msg.Action)
+	for _, qmsg := range *qmsgs {
+		fmt.Println("msg body", qmsg.Msg)
+		actionFactory := new(action.ActionFactory)
+		mission := actionFactory.GenerateMission(qmsg.Msg.Action)
 		mission.DoMission()
-		err = msg.Delete(svc, url)
-		if err != nil {
-			fmt.Println(err)
-		}
+		qmsg.Delete(svc)
 	}
 }

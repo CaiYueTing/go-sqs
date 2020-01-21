@@ -18,8 +18,20 @@ type Msg struct {
 	ReceiptHandle *string
 }
 
-func (msg *Msg) newSendMessage(url string) *sqs.SendMessageInput {
-	body, err := json.Marshal(msg)
+type QueueMsg struct {
+	url *string
+	Msg *Msg
+}
+
+func NewQMsg(msg Msg, url string) *QueueMsg {
+	return &QueueMsg{
+		url: &url,
+		Msg: &msg,
+	}
+}
+
+func (qmsg *QueueMsg) newSendMessage() *sqs.SendMessageInput {
+	body, err := json.Marshal(qmsg.Msg)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -29,7 +41,7 @@ func (msg *Msg) newSendMessage(url string) *sqs.SendMessageInput {
 		MessageGroupId:         aws.String("GroupId"),
 		MessageDeduplicationId: aws.String(uuid.NewV4().String()),
 		MessageBody:            aws.String(string(body)), // Unmarshal
-		QueueUrl:               &url,
+		QueueUrl:               qmsg.url,
 	}
 }
 
@@ -48,16 +60,16 @@ func newReceiveMessage(url string) *sqs.ReceiveMessageInput {
 	}
 }
 
-func (msg *Msg) newDeleteMessage(url string) *sqs.DeleteMessageInput {
+func (qmsg *QueueMsg) newDeleteMessage() *sqs.DeleteMessageInput {
 	return &sqs.DeleteMessageInput{
-		QueueUrl:      &url,
-		ReceiptHandle: msg.ReceiptHandle,
+		QueueUrl:      qmsg.url,
+		ReceiptHandle: qmsg.Msg.ReceiptHandle,
 	}
 }
 
-func (msg *Msg) Send2Q(svc *sqs.SQS, url string) error {
-	// gid is duplicate group id
-	result, err := svc.SendMessage(msg.newSendMessage(url))
+func (qmsg *QueueMsg) Send2Q(svc *sqs.SQS) error {
+	input := qmsg.newSendMessage()
+	result, err := svc.SendMessage(input)
 
 	if err != nil {
 		log.Panic(err)
@@ -68,7 +80,7 @@ func (msg *Msg) Send2Q(svc *sqs.SQS, url string) error {
 	return nil
 }
 
-func Receive(svc *sqs.SQS, url string) []Msg {
+func Receive(svc *sqs.SQS, url string) *[]QueueMsg {
 	result, err := svc.ReceiveMessage(newReceiveMessage(url))
 
 	if err != nil {
@@ -77,22 +89,24 @@ func Receive(svc *sqs.SQS, url string) []Msg {
 	defer recoverfunc(err, "receive message")
 
 	fmt.Println("Message receive amount: ", len(result.Messages))
-	return msg2Struct(result.Messages)
+	return msg2Struct(result.Messages, url)
 }
 
-func msg2Struct(msgs []*sqs.Message) []Msg {
-	messages := []Msg{}
+func msg2Struct(msgs []*sqs.Message, url string) *[]QueueMsg {
+	messages := []QueueMsg{}
 	for _, msg := range msgs {
-		var m Msg
-		json.Unmarshal([]byte(*msg.Body), &m)
-		m.ReceiptHandle = msg.ReceiptHandle
-		messages = append(messages, m)
+		var qm QueueMsg
+		json.Unmarshal([]byte(*msg.Body), &qm.Msg)
+		qm.Msg.ReceiptHandle = msg.ReceiptHandle
+		qm.url = &url
+		messages = append(messages, qm)
 	}
-	return messages
+	return &messages
 }
 
-func (msg *Msg) Delete(svc *sqs.SQS, url string) error {
-	_, err := svc.DeleteMessage(msg.newDeleteMessage(url))
+func (qmsg *QueueMsg) Delete(svc *sqs.SQS) {
+	input := qmsg.newDeleteMessage()
+	_, err := svc.DeleteMessage(input)
 
 	if err != nil {
 		log.Panic(err)
@@ -100,7 +114,6 @@ func (msg *Msg) Delete(svc *sqs.SQS, url string) error {
 	defer recoverfunc(err, "delete message")
 
 	fmt.Println("Message delete")
-	return nil
 }
 
 func recoverfunc(err error, method string) {
