@@ -1,4 +1,4 @@
-package action
+package msgaction
 
 import (
 	"fmt"
@@ -39,21 +39,34 @@ func (s shadow) DoMission() {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String("us-west-2"),
 	}))
-	uploadfile, err := s3helper.NewS3File(
+	uploadfile := s3helper.NewS3File(
 		"barry-dlm-test",
 		"shadow/upload.json",
 		"filefolder/upload.json",
 	)
-	if err != nil {
-		fmt.Println("new file error", err)
-	}
 	uploadfile.Upload2S3(sess)
+	fmt.Println("success upload file")
 }
 
 type upgrade struct{}
 
 func (u upgrade) DoMission() {
 	fmt.Println("this is upgrade mission, just print")
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String("us-west-2"),
+	}))
+	downloadfile := s3helper.NewS3File(
+		"barry-dlm-test",
+		"shadow/upload.json",
+		"download/download.json",
+	)
+
+	err := downloadfile.Download(sess)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("success download file")
 }
 
 type reboot struct{}

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"gosqs/action"
+	"gosqs/msgaction"
 	Queue "gosqs/sqshelper"
 	"gosqs/utility"
 	"log"
@@ -41,7 +41,7 @@ func main() {
 
 	for _, qmsg := range *qmsgs {
 		fmt.Println("msg body", qmsg.Msg)
-		actionFactory := new(action.ActionFactory)
+		actionFactory := new(msgaction.ActionFactory)
 		mission := actionFactory.GenerateMission(qmsg.Msg.Action)
 		mission.DoMission()
 		qmsg.Delete(svc)
