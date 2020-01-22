@@ -6,65 +6,71 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
 type S3File struct {
+	region *string
 	Bucket *string
-	Key    *string
-	file   *string
 }
 
-func NewS3File(bucket string, key string, filename string) *S3File {
+func NewS3(bucket string, region string) *S3File {
 	return &S3File{
 		Bucket: &bucket,
-		Key:    &key,
-		file:   &filename,
+		region: &region,
 	}
 }
 
-func (sf *S3File) Upload2S3(sess *session.Session) error {
-	f, err := os.Open(*sf.file)
+func (s *S3File) newSess() *session.Session {
+	return session.Must(session.NewSession(&aws.Config{
+		Region: s.region,
+	}))
+}
+
+func (s *S3File) Upload(localFile string, remoteFile string) (*string, error) {
+	f, err := os.Open(localFile)
 	if err != nil {
 		fmt.Println("file not found:", err)
-		return err
+		return nil, err
 	}
 	r, err := ioutil.ReadAll(f)
 	if err != nil {
 		fmt.Println("read file error:", err)
-		return err
+		return nil, err
 	}
 	defer f.Close()
-	uploader := s3manager.NewUploader(sess, func(u *s3manager.Uploader) {
+
+	uploader := s3manager.NewUploader(s.newSess(), func(u *s3manager.Uploader) {
 		u.BufferProvider = s3manager.NewBufferedReadSeekerWriteToPool(25 * 1024 * 1024)
 	})
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket: sf.Bucket,
-		Key:    sf.Key,
+	result, err := uploader.Upload(&s3manager.UploadInput{
+		Bucket: s.Bucket,
+		Key:    &remoteFile,
 		Body:   bytes.NewReader(r),
 	})
 	if err != nil {
 		fmt.Println("upload file failed:", err)
-		return err
+		return nil, err
 	}
-	return nil
+	return &result.Location, nil
 }
 
-func (sf *S3File) Download(sess *session.Session) error {
-	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {
+func (s *S3File) Download(localFile string, remoteFile string) error {
+	downloader := s3manager.NewDownloader(s.newSess(), func(d *s3manager.Downloader) {
 		d.PartSize = 64 * 1024 * 1024
 	})
-	file, err := os.Create(*sf.file)
+	file, err := os.Create(localFile)
 	if err != nil {
 		fmt.Println(err, "Create file failed")
 		return err
 	}
 	numBytes, err := downloader.Download(file,
 		&s3.GetObjectInput{
-			Bucket: sf.Bucket,
-			Key:    sf.Key,
+			Bucket: s.Bucket,
+			Key:    &remoteFile,
 		})
 	if err != nil {
 		fmt.Println(err)

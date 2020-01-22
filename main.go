@@ -41,14 +41,19 @@ func main() {
 		}
 	}
 
-	msgs := q.ReceiveMessage(3, 5)
+	msgs := q.ReceiveMessage(3, 10)
 
 	for _, msg := range *msgs {
 		var m Msg
 		json.Unmarshal([]byte(*msg.Msg), &m)
 		mission := msgaction.NewMission(m.Action, msg.Msg)
-		mission.Do()
-		fmt.Println(mission.GetPayload())
+		url, err := mission.Do()
+		if err != nil {
+			fmt.Println("mission failed:", err)
+		}
+		if url != nil {
+			fmt.Println("s3 file url:", *url)
+		}
 		q.Delete(msg.ReceiptHandle)
 	}
 }

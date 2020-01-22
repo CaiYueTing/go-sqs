@@ -3,9 +3,6 @@ package msgaction
 import (
 	"fmt"
 	"gosqs/s3helper"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 )
 
 type factoryInterface interface {
@@ -29,7 +26,7 @@ func (a actionFactory) GenerateMission(m string, payload *string) missionInterfa
 }
 
 type missionInterface interface {
-	Do()
+	Do() (*string, error)
 	GetPayload() string
 }
 
@@ -37,18 +34,16 @@ type shadow struct {
 	payload *string
 }
 
-func (s shadow) Do() {
+func (s shadow) Do() (*string, error) {
 	fmt.Println("this is shadow mission, upload file to s3")
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String("us-west-2"),
-	}))
-	uploadfile := s3helper.NewS3File(
-		"barry-dlm-test",
-		"shadow/upload.json",
-		"filefolder/upload.json",
-	)
-	uploadfile.Upload2S3(sess)
-	fmt.Println("success upload file")
+
+	s3 := s3helper.NewS3("barry-dlm-test", "us-west-2")
+	url, err := s3.Upload("filefolder/shadowupload.json", "shadow/upload.json")
+	if err != nil {
+		fmt.Println("upload failed", err)
+		return nil, err
+	}
+	return url, nil
 }
 
 func (s shadow) GetPayload() string {
@@ -59,23 +54,17 @@ type upgrade struct {
 	payload *string
 }
 
-func (u upgrade) Do() {
-	fmt.Println("this is upgrade mission, just print")
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String("us-west-2"),
-	}))
-	downloadfile := s3helper.NewS3File(
-		"barry-dlm-test",
-		"shadow/upload.json",
-		"download/download.json",
-	)
+func (u upgrade) Do() (*string, error) {
+	fmt.Println("this is upgrade mission, download file from s3")
+	s3 := s3helper.NewS3("barry-dlm-test", "us-west-2")
 
-	err := downloadfile.Download(sess)
+	err := s3.Download("download/download.json", "upload.json")
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil, err
 	}
 	fmt.Println("success download file")
+	return nil, nil
 }
 
 func (u upgrade) GetPayload() string {
@@ -86,8 +75,9 @@ type reboot struct {
 	payload *string
 }
 
-func (r reboot) Do() {
+func (r reboot) Do() (*string, error) {
 	fmt.Println("this is reboot mission, just print")
+	return nil, nil
 }
 
 func (r reboot) GetPayload() string {
