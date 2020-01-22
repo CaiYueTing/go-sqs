@@ -2,7 +2,6 @@ package utility
 
 import (
 	"encoding/json"
-	"gosqs/sqshelper"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,11 +12,9 @@ type Env struct {
 }
 
 var Envir Env
-var Messages []sqshelper.Msg
 
 func init() {
 	readEnv()
-	readMessage()
 }
 
 func readEnv() {
@@ -27,16 +24,6 @@ func readEnv() {
 
 	envjson, _ := ioutil.ReadAll(readenv)
 	err = json.Unmarshal(envjson, &Envir)
-	checkerr(err)
-}
-
-func readMessage() {
-	readMessage, err := os.Open("message.json")
-	checkerr(err)
-	defer readMessage.Close()
-
-	messagejson, _ := ioutil.ReadAll(readMessage)
-	err = json.Unmarshal(messagejson, &Messages)
 	checkerr(err)
 }
 
