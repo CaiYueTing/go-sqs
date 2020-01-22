@@ -12,29 +12,32 @@ type factoryInterface interface {
 	GenerateMission(m string) missionInterface
 }
 
-type ActionFactory struct {
+type actionFactory struct {
 }
 
-func (a ActionFactory) GenerateMission(m string) missionInterface {
+func (a actionFactory) GenerateMission(m string, payload *string) missionInterface {
 	switch m {
 	case "shadow":
-		return shadow{}
+		return shadow{payload: payload}
 	case "upgrade":
-		return upgrade{}
+		return upgrade{payload: payload}
 	case "reboot":
-		return reboot{}
+		return reboot{payload: payload}
 	default:
 		return nil
 	}
 }
 
 type missionInterface interface {
-	DoMission()
+	Do()
+	GetPayload() string
 }
 
-type shadow struct{}
+type shadow struct {
+	payload *string
+}
 
-func (s shadow) DoMission() {
+func (s shadow) Do() {
 	fmt.Println("this is shadow mission, upload file to s3")
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String("us-west-2"),
@@ -48,9 +51,15 @@ func (s shadow) DoMission() {
 	fmt.Println("success upload file")
 }
 
-type upgrade struct{}
+func (s shadow) GetPayload() string {
+	return *s.payload
+}
 
-func (u upgrade) DoMission() {
+type upgrade struct {
+	payload *string
+}
+
+func (u upgrade) Do() {
 	fmt.Println("this is upgrade mission, just print")
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String("us-west-2"),
@@ -69,8 +78,23 @@ func (u upgrade) DoMission() {
 	fmt.Println("success download file")
 }
 
-type reboot struct{}
+func (u upgrade) GetPayload() string {
+	return *u.payload
+}
 
-func (r reboot) DoMission() {
+type reboot struct {
+	payload *string
+}
+
+func (r reboot) Do() {
 	fmt.Println("this is reboot mission, just print")
+}
+
+func (r reboot) GetPayload() string {
+	return *r.payload
+}
+
+func NewMission(action string, payload *string) missionInterface {
+	factory := new(actionFactory)
+	return factory.GenerateMission(action, payload)
 }

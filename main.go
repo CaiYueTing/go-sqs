@@ -27,7 +27,8 @@ var messages []Msg
 
 func main() {
 	url := utility.Envir.Queueurl
-	q := Queue.New("us-west-2", url)
+	region := "us-west-2"
+	q := Queue.New(region, url)
 
 	for _, msg := range messages {
 		if msg.Title == "" || msg.Action == "" || msg.Message == "" {
@@ -45,10 +46,9 @@ func main() {
 	for _, msg := range *msgs {
 		var m Msg
 		json.Unmarshal([]byte(*msg.Msg), &m)
-		fmt.Println("message body: ", m)
-		actionFactory := new(msgaction.ActionFactory)
-		mission := actionFactory.GenerateMission(m.Action)
-		mission.DoMission()
+		mission := msgaction.NewMission(m.Action, msg.Msg)
+		mission.Do()
+		fmt.Println(mission.GetPayload())
 		q.Delete(msg.ReceiptHandle)
 	}
 }
