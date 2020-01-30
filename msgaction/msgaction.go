@@ -2,6 +2,7 @@ package msgaction
 
 import (
 	"fmt"
+	"gosqs/redishelper"
 	"gosqs/s3helper"
 )
 
@@ -76,7 +77,39 @@ type reboot struct {
 }
 
 func (r reboot) Do() (*string, error) {
-	fmt.Println("this is reboot mission, just print")
+	fmt.Println("this is reboot mission, use redis")
+	err := redishelper.SetString("key", "value")
+	if err != nil {
+		fmt.Println(err)
+	}
+	result, err := redishelper.ReadString("key")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(*result)
+
+	err = redishelper.PushList("lpush", "list", "aaa")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	results, err := redishelper.ReadList("list", 0, 10)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(*results)
+
+	ms := map[string]string{"a": "b", "c": "d"}
+	err = redishelper.SetMap("hash", ms)
+	if err != nil {
+		fmt.Println(err)
+	}
+	resultmap, err := redishelper.ReadMap("hash")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(*resultmap)
+
 	return nil, nil
 }
 
