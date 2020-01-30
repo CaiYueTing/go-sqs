@@ -78,33 +78,35 @@ type reboot struct {
 
 func (r reboot) Do() (*string, error) {
 	fmt.Println("this is reboot mission, use redis")
-	err := redishelper.SetString("key", "value")
+	redisdb, err := redishelper.NewRedisPool("127.0.0.1:6379")
+	defer redisdb.Close()
+	err = redisdb.SetString("key", "value")
 	if err != nil {
 		fmt.Println(err)
 	}
-	result, err := redishelper.ReadString("key")
+	result, err := redisdb.ReadString("key")
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(*result)
 
-	err = redishelper.PushList("lpush", "list", "aaa")
+	err = redisdb.PushList("lpush", "list", "aaa")
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	results, err := redishelper.ReadList("list", 0, 10)
+	results, err := redisdb.ReadList("list", 0, 10)
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(*results)
 
 	ms := map[string]string{"a": "b", "c": "d"}
-	err = redishelper.SetMap("hash", ms)
+	err = redisdb.SetMap("hash", ms)
 	if err != nil {
 		fmt.Println(err)
 	}
-	resultmap, err := redishelper.ReadMap("hash")
+	resultmap, err := redisdb.ReadMap("hash")
 	if err != nil {
 		fmt.Println(err)
 	}

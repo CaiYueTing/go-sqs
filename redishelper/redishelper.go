@@ -8,21 +8,24 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-func newRedisPool() (redis.Conn, error) {
-	c, err := redis.Dial("tcp", "127.0.0.1:6379")
+type Redis struct {
+	c redis.Conn
+}
+
+func NewRedisPool(url string) (*Redis, error) {
+	c, err := redis.Dial("tcp", url)
 	if err != nil {
 		return nil, err
 	}
-	return c, nil
+	return &Redis{c}, nil
 }
 
-func Delete(key string) error {
-	c, err := newRedisPool()
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-	result, err := c.Do("del", key)
+func (r *Redis) Close() error {
+	return r.c.Close()
+}
+
+func (r *Redis) Delete(key string) error {
+	result, err := r.c.Do("del", key)
 	if err != nil {
 		return err
 	}
@@ -30,13 +33,8 @@ func Delete(key string) error {
 	return nil
 }
 
-func SetString(key string, value string) error {
-	c, err := newRedisPool()
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-	result, err := c.Do("SET", key, value)
+func (r *Redis) SetString(key string, value string) error {
+	result, err := r.c.Do("SET", key, value)
 	if err != nil {
 		return err
 	}
@@ -45,29 +43,17 @@ func SetString(key string, value string) error {
 	return nil
 }
 
-func ReadString(key string) (*string, error) {
-	c, err := newRedisPool()
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-
-	result, err := redis.String(c.Do("GET", key))
+func (r *Redis) ReadString(key string) (*string, error) {
+	result, err := redis.String(r.c.Do("GET", key))
 	if err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-func SetMap(key string, value map[string]string) error {
-	c, err := newRedisPool()
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-
+func (r *Redis) SetMap(key string, value map[string]string) error {
 	v, _ := json.Marshal(value)
-	result, err := c.Do("set", key, v)
+	result, err := r.c.Do("set", key, v)
 	if err != nil {
 		return err
 	}
@@ -75,34 +61,22 @@ func SetMap(key string, value map[string]string) error {
 	return nil
 }
 
-func ReadMap(key string) (*map[string]string, error) {
-	c, err := newRedisPool()
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-
-	result, err := redis.Bytes(c.Do("get", key))
+func (r *Redis) ReadMap(key string) (*map[string]string, error) {
+	result, err := redis.Bytes(r.c.Do("get", key))
 	if err != nil {
 		return nil, err
 	}
 
-	var r map[string]string
-	err = json.Unmarshal(result, &r)
+	var m map[string]string
+	err = json.Unmarshal(result, &m)
 	if err != nil {
 		return nil, err
 	}
-	return &r, nil
+	return &m, nil
 }
 
-func push(direction string, key string, value string) error {
-	c, err := newRedisPool()
-	if err != nil {
-		return err
-	}
-	defer c.Close()
-
-	result, err := c.Do(direction, key, value)
+func (r *Redis) push(direction string, key string, value string) error {
+	result, err := r.c.Do(direction, key, value)
 	if err != nil {
 		return err
 	}
@@ -110,25 +84,19 @@ func push(direction string, key string, value string) error {
 	return nil
 }
 
-func PushList(direction string, key string, value string) error {
+func (r *Redis) PushList(direction string, key string, value string) error {
 	switch direction {
 	case "lpush":
-		return push(direction, key, value)
+		return r.push(direction, key, value)
 	case "rpush":
-		return push(direction, key, value)
+		return r.push(direction, key, value)
 	default:
 		return errors.New("not command")
 	}
 }
 
-func ReadList(key string, start int, end int) (*[]string, error) {
-	c, err := newRedisPool()
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-
-	result, err := redis.Strings(c.Do("lrange", key, start, end))
+func (r *Redis) ReadList(key string, start int, end int) (*[]string, error) {
+	result, err := redis.Strings(r.c.Do("lrange", key, start, end))
 	if err != nil {
 		return nil, err
 	}
