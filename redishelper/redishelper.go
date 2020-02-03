@@ -9,23 +9,23 @@ import (
 )
 
 type Redis struct {
-	c redis.Conn
+	pool *redis.Pool
 }
 
 func NewRedisPool(url string) (*Redis, error) {
-	c, err := redis.Dial("tcp", url)
-	if err != nil {
-		return nil, err
+	pool := &redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial("tcp", url)
+		},
 	}
-	return &Redis{c}, nil
-}
-
-func (r *Redis) Close() error {
-	return r.c.Close()
+	c := pool.Get()
+	defer c.Close()
+	return &Redis{pool: pool}, nil
 }
 
 func (r *Redis) Delete(key string) error {
-	result, err := r.c.Do("del", key)
+	conn := r.pool.Get()
+	result, err := conn.Do("del", key)
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,8 @@ func (r *Redis) Delete(key string) error {
 }
 
 func (r *Redis) SetString(key string, value string) error {
-	result, err := r.c.Do("SET", key, value)
+	conn := r.pool.Get()
+	result, err := conn.Do("SET", key, value)
 	if err != nil {
 		return err
 	}
@@ -44,7 +45,8 @@ func (r *Redis) SetString(key string, value string) error {
 }
 
 func (r *Redis) ReadString(key string) (*string, error) {
-	result, err := redis.String(r.c.Do("GET", key))
+	conn := r.pool.Get()
+	result, err := redis.String(conn.Do("GET", key))
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +54,9 @@ func (r *Redis) ReadString(key string) (*string, error) {
 }
 
 func (r *Redis) SetMap(key string, value map[string]string) error {
+	conn := r.pool.Get()
 	v, _ := json.Marshal(value)
-	result, err := r.c.Do("set", key, v)
+	result, err := conn.Do("set", key, v)
 	if err != nil {
 		return err
 	}
@@ -62,7 +65,8 @@ func (r *Redis) SetMap(key string, value map[string]string) error {
 }
 
 func (r *Redis) ReadMap(key string) (*map[string]string, error) {
-	result, err := redis.Bytes(r.c.Do("get", key))
+	conn := r.pool.Get()
+	result, err := redis.Bytes(conn.Do("get", key))
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +80,8 @@ func (r *Redis) ReadMap(key string) (*map[string]string, error) {
 }
 
 func (r *Redis) push(direction string, key string, value string) error {
-	result, err := r.c.Do(direction, key, value)
+	conn := r.pool.Get()
+	result, err := conn.Do(direction, key, value)
 	if err != nil {
 		return err
 	}
@@ -96,7 +101,8 @@ func (r *Redis) PushList(direction string, key string, value string) error {
 }
 
 func (r *Redis) ReadList(key string, start int, end int) (*[]string, error) {
-	result, err := redis.Strings(r.c.Do("lrange", key, start, end))
+	conn := r.pool.Get()
+	result, err := redis.Strings(conn.Do("lrange", key, start, end))
 	if err != nil {
 		return nil, err
 	}

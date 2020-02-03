@@ -5,10 +5,12 @@ go 1.13
 require (
 	github.com/DataDog/zstd v1.4.4 // indirect
 	github.com/aws/aws-sdk-go v1.28.3
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/garyburd/redigo v1.6.0
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.4.0 // indirect
+	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/satori/go.uuid v1.2.0
