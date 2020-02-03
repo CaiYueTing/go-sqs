@@ -108,3 +108,25 @@ func (r *Redis) ReadList(key string, start int, end int) (*[]string, error) {
 	}
 	return &result, nil
 }
+
+func (r *Redis) Subscribe(key string, msg chan []byte) error {
+	conn := r.pool.Get()
+	pubsub := redis.PubSubConn{Conn: conn}
+	if err := pubsub.PSubscribe(key); err != nil {
+		return err
+	}
+	go func() {
+		for {
+			switch v := pubsub.Receive().(type) {
+			case redis.PMessage:
+				msg <- v.Data
+			}
+		}
+	}()
+	return nil
+}
+
+func (r *Redis) Publish(key string, value string) {
+	conn := r.pool.Get()
+	conn.Do("publish", key, value)
+}

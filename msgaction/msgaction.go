@@ -79,7 +79,7 @@ type reboot struct {
 func (r reboot) Do() (*string, error) {
 	fmt.Println("this is reboot mission, use redis")
 	redisdb, err := redishelper.NewRedisPool("127.0.0.1:6379")
-	defer redisdb.Close()
+
 	err = redisdb.SetString("key", "value")
 	if err != nil {
 		fmt.Println(err)
@@ -111,6 +111,11 @@ func (r reboot) Do() (*string, error) {
 		fmt.Println(err)
 	}
 	fmt.Println(*resultmap)
+
+	reply := make(chan []byte)
+	redisdb.Subscribe("topic", reply)
+	msg := <-reply
+	fmt.Println(string(msg))
 
 	return nil, nil
 }
