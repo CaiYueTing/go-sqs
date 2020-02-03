@@ -44,7 +44,7 @@ func (r *Redis) SetString(key string, value string) error {
 	return nil
 }
 
-func (r *Redis) ReadString(key string) (*string, error) {
+func (r *Redis) GetString(key string) (*string, error) {
 	conn := r.pool.Get()
 	result, err := redis.String(conn.Do("GET", key))
 	if err != nil {
@@ -64,7 +64,7 @@ func (r *Redis) SetMap(key string, value map[string]string) error {
 	return nil
 }
 
-func (r *Redis) ReadMap(key string) (*map[string]string, error) {
+func (r *Redis) GetMap(key string) (*map[string]string, error) {
 	conn := r.pool.Get()
 	result, err := redis.Bytes(conn.Do("get", key))
 	if err != nil {
@@ -77,6 +77,15 @@ func (r *Redis) ReadMap(key string) (*map[string]string, error) {
 		return nil, err
 	}
 	return &m, nil
+}
+
+func (r *Redis) GetHash(key string) (*[]interface{}, error) {
+	conn := r.pool.Get()
+	result, err := redis.Values(conn.Do("hgetall", key))
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (r *Redis) push(direction string, key string, value string) error {
@@ -100,7 +109,7 @@ func (r *Redis) PushList(direction string, key string, value string) error {
 	}
 }
 
-func (r *Redis) ReadList(key string, start int, end int) (*[]string, error) {
+func (r *Redis) GetList(key string, start int, end int) (*[]string, error) {
 	conn := r.pool.Get()
 	result, err := redis.Strings(conn.Do("lrange", key, start, end))
 	if err != nil {

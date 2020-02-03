@@ -84,7 +84,7 @@ func (r reboot) Do() (*string, error) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	result, err := redisdb.ReadString("key")
+	result, err := redisdb.GetString("key")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -95,7 +95,7 @@ func (r reboot) Do() (*string, error) {
 		fmt.Println(err)
 	}
 
-	results, err := redisdb.ReadList("list", 0, 10)
+	results, err := redisdb.GetList("list", 0, 10)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -106,7 +106,7 @@ func (r reboot) Do() (*string, error) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	resultmap, err := redisdb.ReadMap("hash")
+	resultmap, err := redisdb.GetMap("hash")
 	if err != nil {
 		fmt.Println(err)
 	}
