@@ -2,8 +2,8 @@ package msgaction
 
 import (
 	"fmt"
+	s3helper "github.com/CaiYueTing/serverlib/s3helper"
 	"gosqs/redishelper"
-	"gosqs/s3helper"
 )
 
 type factoryInterface interface {

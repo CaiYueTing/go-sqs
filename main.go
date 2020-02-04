@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"gosqs/msgaction"
-	Queue "gosqs/sqshelper"
 	"gosqs/utility"
 	"io/ioutil"
 	"log"
 	"os"
+
+	Queue "github.com/CaiYueTing/serverlib/sqshelper"
 )
 
 // Msg is User defined structure
@@ -28,7 +29,7 @@ var messages []Msg
 func main() {
 	url := utility.Envir.Queueurl
 	region := "us-west-2"
-	q := Queue.New(region, url)
+	q := Queue.NewQ(region, url)
 
 	for _, msg := range messages {
 		if msg.Title == "" || msg.Action == "" || msg.Message == "" {
